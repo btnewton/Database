@@ -2,41 +2,62 @@
 # Barre Forest Guide Database Builder
 # 10/27/2014
 
+# NOTE: There does seem to be some loss in precission between processing
+# 			coordinates and inserting them into the database. The 15th
+# 			decimal place is lost. This is NOT an issue because such a
+# 			high level of precission is less than a micron and is
+# 			probably innacurate. Smart phone GPS hardware accuracy is
+# 			limited to a magnitude of meters. The 5th decimal place
+# 			is accurate to 1.1 meters and that is sufficient.
+
 from xml.dom import minidom
 import sqlite3
-
-
-# Global Variables
 
 # Filenames & paths
 kml_directory = ''
 kml_file = 'MillstoneTrails.kml'
 
-db_directoy = ''
+db_directory = ''
 db_file = 'bfg.sqlite'
 
 # KML
 kmldoc = minidom.parse(kml_directory + kml_file)
 
 # SQLite Database connection
-connection = sqlite3.connect(db_directoy + db_file)
+connection = sqlite3.connect(db_directory + db_file)
+
+# Global Variables
 cursor = connection.cursor()
 
 
-# Main() proesses the information for each placemarker in the KML file and 
-# inserts it into the database. Processing and insertion happens every
-# iteration of the primary for loop.
+# Main() calls all functions and allows unwanted functions to be commented out.
 def main():
-	# Used to count the number of unique tags processed.
-	tag_counter = 0
-
-	# Used to count number of trails added
-	placemark_counter = 0
 
 	# Drop & create tables
 	drop_tables()
 	create_tables()
 
+	add_placemarkers()
+
+	add_poi_types()
+
+	add_points_of_interest()
+
+	# Close connection
+	cursor.close()
+	print("Program Complete.")
+
+
+# Add_placemarkers() proesses the information for each placemarker in the KML file and 
+# inserts it into the database. Processing and table insertion happens every
+# iteration of the primary for loop.
+def add_placemarkers():
+
+	# Used to count the number of unique tags processed.
+	tag_counter = 0
+
+	# Used to count number of trails added
+	placemark_counter = 0
 
 	# Begin processing placemarkers in KML file.
 
@@ -44,8 +65,9 @@ def main():
 	document = kml.getElementsByTagName('Document')[0]
 	placemarks = document.getElementsByTagName('Placemark')
 
-	print("Processing placemarkers...", end="")
+	print("Processing placemarkers...")
 	for placemark in placemarks:
+
 		# Get names, tags & distance
 		extended_data = placemark.getElementsByTagName('ExtendedData')[0]
 		data = extended_data.getElementsByTagName('SchemaData')[0].childNodes
@@ -82,15 +104,16 @@ def main():
 					coordinate_counter += 1
 
 		# Insert trails information
-		trail_values = [placemark_counter, summer_name, winter_name, distance]
-		cursor.execute("""INSERT INTO trails VALUES(?, ?, ?, ?)""", trail_values)
+		url = ""
+		trail_values = [placemark_counter, summer_name, winter_name, distance, url]
+		cursor.execute("""INSERT INTO trails VALUES(?, ?, ?, ?, ?)""", trail_values)
 
 		# Insert trail tags & tag-trail relationship
 		tag_counter = add_tag(summer_tag, placemark_counter, tag_counter)
 
 		if summer_tag != winter_tag:
 			tag_counter = add_tag(winter_tag, placemark_counter, tag_counter)
-		
+
 		# Insert trail coordinates
 		for i in range(0, int(len(coordinates)/2)):
 			lattitude = coordinates[i*2]
@@ -105,8 +128,6 @@ def main():
 		placemark_counter += 1
 
 	print("Done.")
-	# Close connection
-	cursor.close()
 
 # Checks to see if tag has already been stored. If this is a new tag it is stored.
 # The trail-tag relationship is then added. The tag_counter is returned in case
@@ -139,22 +160,25 @@ def add_tag(tag, trail_id, tag_counter):
 
 
 def drop_tables():
-	print("Dropping tables...", end="")
+	print("Dropping tables...")
 	cursor.execute("""DROP TABLE IF EXISTS trails""")
 	cursor.execute("""DROP TABLE IF EXISTS trail_tag_ids""")
 	cursor.execute("""DROP TABLE IF EXISTS trail_tags""")
 	cursor.execute("""DROP TABLE IF EXISTS coordinates""")
+	cursor.execute("""DROP TABLE IF EXISTS points_of_interest""")
+	cursor.execute("""DROP TABLE IF EXISTS poi_types""")
 	print("Done.")
 
 def create_tables():
-	print("Creating tables...", end="")
+	print("Creating tables...")
 
 	# The trails table is used to store each unique trail or sub trail
 	cursor.execute("""CREATE TABLE trails (
 					id				INTEGER PRIMARY KEY,
 					name_summer		TEXT,
 					name_winter		TEXT,
-					distance		REAL
+					distance		REAL,
+					url				TEXT
 
 					)""")
 
@@ -185,7 +209,59 @@ def create_tables():
 
 					)""")
 
+	cursor.execute("""CREATE TABLE poi_types (
+					name 		TEXT
+
+					)""")
+
+	cursor.execute("""CREATE TABLE points_of_interest (
+					name 		TEXT,
+					type		INTEGER,
+					lattitude	REAL,
+					longitude	REAL,
+					url			TEXT,
+					FOREIGN KEY(type) REFERENCES poi_types(rowid)
+
+					)""")
+
 	connection.commit()
+	print("Done.")
+
+
+
+def add_poi_types():
+	print("Adding POI types")
+	poi_types = []
+
+	#Add POI types here. Note the corresponding rowid!
+	poi_types.append('Parking Lot') 	#1 (rowid) *Parking lots should only be listed if they are for Forest users.
+	poi_types.append('Overlook')		#2
+	poi_types.append('Store')			#3
+
+	for i in range(0, len(poi_types)):
+		cursor.execute("""INSERT INTO poi_types VALUES(?)""", (poi_types[i],))
+
+	connection.commit()
+	print("Done.")
+
+def add_points_of_interest():
+	print("Adding POI")
+
+	# Creates a list containing 5 lists initialized to 0
+	poi_values = []
+	
+	poi_values.append(["MTA Shop", 3, 44.159882, -72.470772, None])
+	poi_values.append(["Lawson's Store", 3, 44.159483, -72.470880, None])
+	poi_values.append(["South View", 2, 44.136259, -72.491225, None])
+	poi_values.append(["Grand Lookout", 2, 44.161278, -72.476250, None])
+	poi_values.append(["Brook St. Parking Lot", 1, 44.157065, -72.469682, None])
+	poi_values.append(["Little John Parking Lot", 1, 44.155471, -72.462611, None])
+
+	for i in range(0, len(poi_values)):
+		cursor.execute("""INSERT INTO points_of_interest VALUES(?, ?, ?, ?, ?)""", poi_values[i])
+
+	connection.commit()
+
 	print("Done.")
 
 main()
