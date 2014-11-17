@@ -79,7 +79,7 @@ def add_placemarkers():
 		distance = float(data[21].firstChild.nodeValue) 	# Distance (meters)
 
 		# Get coordinates
-		lineString = document.getElementsByTagName('LineString')[0]
+		lineString = placemark.getElementsByTagName('LineString')[0]
 		coordinate_string = lineString.getElementsByTagName('coordinates')[0].firstChild.nodeValue
 
 		coordinates = coordinate_string.split(',')
@@ -116,8 +116,8 @@ def add_placemarkers():
 
 		# Insert trail coordinates
 		for i in range(0, int(len(coordinates)/2)):
-			lattitude = coordinates[i*2]
-			longitude = coordinates[i*2 +1]
+			longitude = coordinates[i*2]
+			lattitude = coordinates[i*2 +1]
 
 			coordinate_values = [placemark_counter, lattitude, longitude]
 
