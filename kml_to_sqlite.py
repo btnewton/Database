@@ -237,6 +237,7 @@ def add_poi_types():
 	poi_types.append('Parking Lot') 	#1 (rowid) *Parking lots should only be listed if they are for Forest users.
 	poi_types.append('Overlook')		#2
 	poi_types.append('Store')			#3
+	poi_types.append('Historic Site')	#4
 
 	for i in range(0, len(poi_types)):
 		cursor.execute("""INSERT INTO poi_types VALUES(?)""", (poi_types[i],))
@@ -256,6 +257,8 @@ def add_points_of_interest():
 	poi_values.append(["Grand Lookout", 2, 44.161278, -72.476250, None])
 	poi_values.append(["Brook St. Parking Lot", 1, 44.157065, -72.469682, None])
 	poi_values.append(["Little John Parking Lot", 1, 44.155471, -72.462611, None])
+	poi_values.append(["Littlejohn & Milne Quarry", 4, 44.153975, -72.460692, None])
+	poi_values.append(["The Couture/Wheeler Farm", 4, 44.159102, -72.467794, None])
 
 	for i in range(0, len(poi_values)):
 		cursor.execute("""INSERT INTO points_of_interest VALUES(?, ?, ?, ?, ?)""", poi_values[i])
